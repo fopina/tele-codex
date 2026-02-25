@@ -41,6 +41,6 @@ Guidance for agents working in this repository.
 
 ## Docs and config hygiene
 
-- Keep `README_new.md` and `telecodex/__main__.py` in sync when changing runtime env vars or execution flow.
+- Keep `README.md` and `telecodex/__main__.py` in sync when changing runtime env vars or execution flow.
 - If modifying packaging metadata (`pyproject.toml`), note whether changes are for the bot project or template cleanup.
 - Avoid deleting template files unless the task asks for repository cleanup/migration.

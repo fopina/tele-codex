@@ -11,6 +11,7 @@ jobs:
     with:
       # so easy to forget bumping the version to match the tag, just override it!
       version: ${{ github.ref_name }}
+      repository: pypi
     secrets:
       twine_token: ${{ secrets.PYPI_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
