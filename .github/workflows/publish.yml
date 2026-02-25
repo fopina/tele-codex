@@ -68,8 +68,8 @@ jobs:
       - name: highlight
         run: |
           INDEX=""
-          if [ "${{ inputs.repository }}" = "testpypi" ]; then
-            INDEX=" --index-url https://test.pypi.org/simple/"
+          if [ "${{ inputs.repository }}" != "pypi" ]; then
+            INDEX=" -i ${{ inputs.repository }}"
           fi
           cat <<EOF >> ${GITHUB_STEP_SUMMARY}
           \`telecodex\` uploaded to ${{ inputs.repository }}
