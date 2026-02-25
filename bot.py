@@ -8,6 +8,10 @@ import threading
 import time
 import urllib.request
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 POLL_TIMEOUT_SECONDS = int(os.getenv("POLL_TIMEOUT_SECONDS", "30"))
 
