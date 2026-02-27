@@ -22,21 +22,43 @@ The bot receives Telegram messages, sends them to `codex app-server`, and replie
 uv sync --group dev
 ```
 
-## Environment variables
+## Configuration
 
-- `TELEGRAM_BOT_TOKEN` (required): Telegram bot token
-- `CODEX_APP_SERVER_CMD` (optional): command to launch app-server. Default: `codex app-server`
-- `CODEX_MODEL` (optional): model for `thread/start`. Default: `gpt-5`
-- `CODEX_CWD` (optional): working directory for the app-server thread. Default: current working directory
-- `CODEX_APPROVAL_POLICY` (optional): `untrusted|on-failure|on-request|never`. Default: `never`
-- `POLL_TIMEOUT_SECONDS` (optional): Telegram long-poll timeout. Default: `30`
+By default, `telecodex` reads a platform-specific config path:
+
+- macOS: `~/Library/Application Support/telecodex/config.toml`
+- Linux: `~/.config/telecodex/config.toml`
+- Windows: `%APPDATA%\\telecodex\\config.toml`
+
+Example:
+
+```toml
+[telecodex]
+telegram_bot_token = "123456:ABC..."
+codex_app_server_cmd = "codex app-server"
+codex_model = "gpt-5"
+codex_cwd = "."
+codex_approval_policy = "never"
+poll_timeout_seconds = 30
+```
+
+You can choose another config file with:
+
+```bash
+python3 -m telecodex --config /path/to/config.toml
+```
+
+Option precedence is:
+
+1. CLI flags
+2. Environment variables (`TELEGRAM_BOT_TOKEN`, `CODEX_*`, `POLL_TIMEOUT_SECONDS`)
+3. TOML config values
+4. Built-in defaults
 
 ## Run
 
 ```bash
-export TELEGRAM_BOT_TOKEN='123456:ABC...'
-export CODEX_APP_SERVER_CMD='codex app-server'
-export CODEX_MODEL='gpt-5'
+# optional: create config.toml at the default platform-specific location shown above
 python3 -m telecodex
 ```
 
