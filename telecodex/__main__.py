@@ -31,6 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
 @dataclass(slots=True)
 class Settings:
     telegram_bot_token: str
+    allowed_chat_id: int | None
     poll_timeout_seconds: int
     codex_app_server_cmd: str
     codex_model: str
@@ -42,6 +43,7 @@ DEFAULT_CONFIG_PATH = str(Path(user_config_dir('telecodex')) / 'config.toml')
 CONFIG_SECTION = 'telecodex'
 CONFIG_KEYS = {
     'telegram_bot_token',
+    'allowed_chat_id',
     'poll_timeout_seconds',
     'codex_app_server_cmd',
     'codex_model',
@@ -266,6 +268,12 @@ def require_env(settings: Settings) -> None:
     if not settings.telegram_bot_token:
         print('Missing TELEGRAM_BOT_TOKEN', file=sys.stderr)
         sys.exit(1)
+    if settings.allowed_chat_id is None:
+        print(
+            'Missing allowed chat id (--allowed-chat-id / TELEGRAM_ALLOWED_CHAT_ID / config allowed_chat_id)',
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -274,6 +282,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     text = (message.text or '').strip()
     if not text:
+        return
+
+    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
+    if isinstance(allowed_chat_id, int) and message.chat_id != allowed_chat_id:
         return
 
     codex = context.application.bot_data['codex']
@@ -320,6 +332,7 @@ def run_bot(settings: Settings) -> None:
             codex.start()
             app = ApplicationBuilder().token(settings.telegram_bot_token).build()
             app.bot_data['codex'] = codex
+            app.bot_data['allowed_chat_id'] = settings.allowed_chat_id
             app.add_handler(MessageHandler(filters.TEXT, handle_message))
             app.add_error_handler(handle_error)
 
@@ -361,6 +374,13 @@ class Telecodex:
         show_envvar=True,
         help='Telegram bot token.',
     )
+    allowed_chat_id: int | None = classyclick.Option(
+        envvar='TELEGRAM_ALLOWED_CHAT_ID',
+        default=None,
+        type=int,
+        show_envvar=True,
+        help='Only this Telegram chat id will receive replies.',
+    )
     poll_timeout_seconds: int = classyclick.Option(
         envvar='POLL_TIMEOUT_SECONDS',
         default=30,
@@ -400,6 +420,7 @@ class Telecodex:
     def __call__(self) -> None:
         settings = Settings(
             telegram_bot_token=self.telegram_bot_token,
+            allowed_chat_id=self.allowed_chat_id,
             poll_timeout_seconds=self.poll_timeout_seconds,
             codex_app_server_cmd=self.codex_app_server_cmd,
             codex_model=self.codex_model,
