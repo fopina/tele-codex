@@ -11,6 +11,7 @@ import threading
 import time
 from contextlib import suppress
 
+import classyclick
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.constants import ChatAction, ParseMode
@@ -242,7 +243,7 @@ async def handle_error(_: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f'Loop error: {context.error}', file=sys.stderr)
 
 
-def main() -> None:
+def run_bot() -> None:
     require_env()
 
     codex = CodexStdioClient(CODEX_APP_SERVER_CMD)
@@ -269,6 +270,71 @@ def main() -> None:
             time.sleep(3)
         finally:
             codex.stop()
+
+
+@classyclick.command()
+class Telecodex:
+    """Telegram bot bridge for codex app-server over stdio."""
+
+    telegram_bot_token: str = classyclick.Option(
+        envvar='TELEGRAM_BOT_TOKEN',
+        default='',
+        type=str,
+        show_envvar=True,
+        help='Telegram bot token.',
+    )
+    poll_timeout_seconds: int = classyclick.Option(
+        envvar='POLL_TIMEOUT_SECONDS',
+        default=30,
+        type=int,
+        show_envvar=True,
+        help='Telegram polling timeout in seconds.',
+    )
+    codex_app_server_cmd: str = classyclick.Option(
+        envvar='CODEX_APP_SERVER_CMD',
+        default='codex app-server',
+        type=str,
+        show_envvar=True,
+        help='Command used to launch codex app-server.',
+    )
+    codex_model: str = classyclick.Option(
+        envvar='CODEX_MODEL',
+        default='gpt-5',
+        type=str,
+        show_envvar=True,
+        help='Codex model passed to thread/start.',
+    )
+    codex_cwd: str = classyclick.Option(
+        envvar='CODEX_CWD',
+        default=CODEX_CWD,
+        type=str,
+        show_envvar=True,
+        help='Working directory for the codex app-server thread.',
+    )
+    codex_approval_policy: str = classyclick.Option(
+        envvar='CODEX_APPROVAL_POLICY',
+        default='never',
+        type=str,
+        show_envvar=True,
+        help='Approval policy passed to thread/start.',
+    )
+
+    def __call__(self) -> None:
+        global TELEGRAM_BOT_TOKEN, POLL_TIMEOUT_SECONDS
+        global CODEX_APP_SERVER_CMD, CODEX_MODEL, CODEX_CWD, CODEX_APPROVAL_POLICY
+
+        TELEGRAM_BOT_TOKEN = self.telegram_bot_token
+        POLL_TIMEOUT_SECONDS = self.poll_timeout_seconds
+        CODEX_APP_SERVER_CMD = self.codex_app_server_cmd
+        CODEX_MODEL = self.codex_model
+        CODEX_CWD = self.codex_cwd
+        CODEX_APPROVAL_POLICY = self.codex_approval_policy
+
+        run_bot()
+
+
+def main() -> None:
+    Telecodex.click()
 
 
 if __name__ == '__main__':

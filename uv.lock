@@ -185,6 +185,31 @@ wheels = [
 ]
 
 [[package]]
+name = "classyclick"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/c3/d921b1ba93b3408f6a778498bd0104c36515b95dbb75eef2b544a997a6ff/classyclick-0.6.2.tar.gz", hash = "sha256:ac51b97602394fd5a71f53d8067e8cacd6f70019e8ecbdc39a5b6b085d4ecbb4", size = 16577, upload-time = "2025-06-05T16:27:49.039Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/fb/6130ee35660381c1c6c5fe66c59227c8d7491e7b31ddb8196f05c16db760/classyclick-0.6.2-py3-none-any.whl", hash = "sha256:a22c58a4592a40666ae917b4047a22521b9616129d98c4a22d37c84e2c9f9bf4", size = 10428, upload-time = "2025-06-05T16:27:48.063Z" },
+]
+
+[[package]]
+name = "click"
+version = "8.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/fa/656b739db8587d7b5dfa22e22ed02566950fbfbcdc20311993483657a5c0/click-8.3.1.tar.gz", hash = "sha256:12ff4785d337a1bb490bb7e9c2b1ee5da3112e94a8622f26a6c77f5d2fc6842a", size = 295065, upload-time = "2025-11-15T20:45:42.706Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/78/01c019cdb5d6498122777c1a43056ebb3ebfeef2076d9d026bfe15583b2b/click-8.3.1-py3-none-any.whl", hash = "sha256:981153a64e25f12d547d3426c367a4857371575ee7ad18df2a6183ab0545b2a6", size = 108274, upload-time = "2025-11-15T20:45:41.139Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -806,6 +831,7 @@ wheels = [
 name = "telecodex"
 source = { editable = "." }
 dependencies = [
+    { name = "classyclick" },
     { name = "python-dotenv" },
     { name = "python-telegram-bot" },
 ]
@@ -822,6 +848,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "classyclick" },
     { name = "python-dotenv" },
     { name = "python-telegram-bot" },
 ]

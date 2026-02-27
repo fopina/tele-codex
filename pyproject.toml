@@ -9,7 +9,7 @@ dynamic = ["version"]
 description = "Telegram bot bridge for codex app-server over stdio"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["python-dotenv", "python-telegram-bot"]
+dependencies = ["classyclick", "python-dotenv", "python-telegram-bot"]
 
 [dependency-groups]
 dev = [
