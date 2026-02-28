@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import html
 import json
 import os
 import shlex
@@ -61,15 +62,6 @@ CONFIG_KEYS = {
     'codex_approval_policy',
 }
 
-KNOWN_ACP_METHOD_PREFIXES = (
-    'codex/event/',
-    'item/',
-    'turn/',
-    'thread/',
-    'account/',
-)
-
-
 def load_settings_from_toml(config_path: str) -> dict[str, Any]:
     path = Path(config_path).expanduser()
     if not path.exists():
@@ -122,6 +114,8 @@ class CodexStdioClient:
         self.acp_log_lock = threading.Lock()
         self.rate_limits_lock = threading.Lock()
         self.rate_limits_by_id: dict[Any, dict[str, Any]] = {}
+        self.token_usage_lock = threading.Lock()
+        self.latest_token_usage: dict[str, Any] | None = None
         self.thread_id: str | None = None
 
     def start(self) -> None:
@@ -215,6 +209,7 @@ class CodexStdioClient:
                 continue
             if isinstance(msg, dict):
                 self._track_rate_limits(msg)
+                self._track_token_usage(msg)
                 return msg, line
 
     def _track_rate_limits(self, msg: dict[str, Any]) -> None:
@@ -234,6 +229,26 @@ class CodexStdioClient:
     def get_rate_limits_snapshot(self) -> dict[Any, dict[str, Any]]:
         with self.rate_limits_lock:
             return copy.deepcopy(self.rate_limits_by_id)
+
+    def _track_token_usage(self, msg: dict[str, Any]) -> None:
+        method = msg.get('method')
+        if method != 'codex/event/token_count':
+            return
+        params = msg.get('params')
+        if not isinstance(params, dict):
+            return
+        nested_msg = params.get('msg')
+        if not isinstance(nested_msg, dict):
+            return
+        info = nested_msg.get('info')
+        if not isinstance(info, dict):
+            return
+        with self.token_usage_lock:
+            self.latest_token_usage = copy.deepcopy(info)
+
+    def get_latest_token_usage(self) -> dict[str, Any] | None:
+        with self.token_usage_lock:
+            return copy.deepcopy(self.latest_token_usage)
 
     def _request(self, method: str, params: dict, unprocessed_messages: list[str] | None = None) -> dict:
         req_id = self.next_id
@@ -364,6 +379,11 @@ def format_raw_json_markdown(raw_message: str) -> str:
     return f'```json\n{safe_raw}\n```'
 
 
+def format_raw_json_expandable_blockquote(raw_message: str) -> str:
+    escaped = html.escape(raw_message)
+    return f'<blockquote expandable>{escaped}</blockquote>'
+
+
 def is_delta_message(raw_message: str) -> bool:
     try:
         msg = json.loads(raw_message)
@@ -393,9 +413,13 @@ def should_report_verbose_unhandled_message(msg: dict) -> bool:
         return True
     if 'delta' in method.lower():
         return False
-    if method in {'item/agentMessage/delta', 'turn/completed'}:
-        return False
-    if method.startswith(KNOWN_ACP_METHOD_PREFIXES):
+    if method in {
+        'item/agentMessage/delta',
+        'turn/completed',
+        'account/rateLimits/updated',
+        'codex/event/token_count',
+        'thread/tokenUsage/updated',
+    }:
         return False
     return True
 
@@ -414,6 +438,24 @@ async def reply_markdown(message: Any, text: str, reply_to_message_id: int) -> N
             text,
             reply_to_message_id=reply_to_message_id,
             disable_web_page_preview=True,
+        )
+
+
+async def reply_expandable_blockquote(message: Any, text: str, reply_to_message_id: int) -> None:
+    max_payload = 4000
+    payload = text[:max_payload]
+    try:
+        await message.reply_text(
+            format_raw_json_expandable_blockquote(payload),
+            reply_to_message_id=reply_to_message_id,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+    except BadRequest:
+        await reply_markdown(
+            message,
+            format_raw_json_markdown(payload),
+            reply_to_message_id=reply_to_message_id,
         )
 
 
@@ -436,7 +478,7 @@ async def process_user_input(message: Any, context: ContextTypes.DEFAULT_TYPE, t
         for raw_message in ask_result.unprocessed_messages:
             if is_delta_message(raw_message):
                 continue
-            await reply_markdown(message, format_raw_json_markdown(raw_message), reply_to_message_id=message.message_id)
+            await reply_expandable_blockquote(message, raw_message, reply_to_message_id=message.message_id)
 
 
 async def handle_start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -474,20 +516,38 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     codex = context.application.bot_data['codex']
     assert isinstance(codex, CodexStdioClient)
     snapshot = await asyncio.to_thread(codex.get_rate_limits_snapshot)
-    if not snapshot:
-        await reply_markdown(message, 'No rate limits received yet.', reply_to_message_id=message.message_id)
+    token_usage = await asyncio.to_thread(codex.get_latest_token_usage)
+    if not snapshot and not token_usage:
+        await reply_markdown(
+            message,
+            'No rate limits or token usage received yet.',
+            reply_to_message_id=message.message_id,
+        )
         return
 
-    lines: list[str] = ['*Rate Limits*']
-    for limit_id, values in sorted(snapshot.items(), key=lambda item: str(item[0])):
-        model = 'Global' if limit_id is None else str(limit_id)
+    lines: list[str] = ['*Status*']
+    if snapshot:
         lines.append('')
-        lines.append(f'*Model:* `{model}`')
+        lines.append('*Rate Limits*')
+        for limit_id, values in sorted(snapshot.items(), key=lambda item: str(item[0])):
+            model = 'Global' if limit_id is None else str(limit_id)
+            lines.append('')
+            lines.append(f'*Model:* `{model}`')
 
-        primary = values.get('primary')
-        secondary = values.get('secondary')
-        lines.append(f'*Primary:* {format_rate_limit_bucket(primary)}')
-        lines.append(f'*Secondary:* {format_rate_limit_bucket(secondary)}')
+            primary = values.get('primary')
+            secondary = values.get('secondary')
+            lines.append(f'*Primary:* {format_rate_limit_bucket(primary)}')
+            lines.append(f'*Secondary:* {format_rate_limit_bucket(secondary)}')
+
+    if token_usage:
+        lines.append('')
+        lines.append('*Token Usage*')
+        total = token_usage.get('total_token_usage')
+        last = token_usage.get('last_token_usage')
+        model_context_window = token_usage.get('model_context_window')
+        lines.append(f'*Total:* {format_token_usage(total)}')
+        lines.append(f'*Last:* {format_token_usage(last)}')
+        lines.append(f'*Model Context Window:* `{model_context_window}`')
 
     await reply_markdown(message, '\n'.join(lines), reply_to_message_id=message.message_id)
 
@@ -500,6 +560,15 @@ def format_rate_limit_bucket(bucket: Any) -> str:
     used_percent_display = f'{used_percent}%' if isinstance(used_percent, (int, float)) else 'n/a'
     reset_display = format_utc_timestamp(resets_at)
     return f'{used_percent_display} - {reset_display}'
+
+
+def format_token_usage(usage: Any) -> str:
+    if not isinstance(usage, dict):
+        return 'n/a'
+    total_tokens = usage.get('total_tokens')
+    input_tokens = usage.get('input_tokens')
+    output_tokens = usage.get('output_tokens')
+    return f'total=`{total_tokens}` input=`{input_tokens}` output=`{output_tokens}`'
 
 
 def format_utc_timestamp(value: Any) -> str:
