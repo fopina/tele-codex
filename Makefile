@@ -17,3 +17,6 @@ testpub:
 	rm -fr dist
 	uv run pyproject-build
 	uv run twine upload --repository testpypi dist/*
+
+dev:
+	find telecodex -name '*.py' | entr -r uv run telecodex
