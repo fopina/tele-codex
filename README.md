@@ -58,7 +58,7 @@ Option precedence is:
 3. TOML config values
 4. Built-in defaults
 
-`allowed_chat_id` (or `TELEGRAM_ALLOWED_CHAT_ID`) is mandatory, and the bot only replies to that chat id.
+`allowed_chat_id` (or `TELEGRAM_ALLOWED_CHAT_ID`) is mandatory, and the bot only accepts messages from that sender user id.
 ACP/app-server message logging is disabled by default and is enabled only when `acp_log_file` (or `TELECODEX_ACP_LOG_FILE`) is set.
 
 ## Run
@@ -77,7 +77,7 @@ On startup, the bot registers Telegram commands:
 - `/status`: fetches current ACP rate-limit values on demand (`account/rateLimits/read`) and shows latest token usage
 - `/model`: shows an inline menu of available models, marks the current one with `✅`, includes `Free text` for manual model ids, and applies the selection to next turns (`Cancel` closes without changes)
 
-When verbose mode is enabled, every ACP/app-server message that is not normally processed by the bridge is sent back to the allowed chat as raw JSON in Markdown.
+When verbose mode is enabled, every ACP/app-server message that is not normally processed by the bridge is sent back to the requesting message as raw JSON in Markdown (still restricted to the allowed sender user id).
 
 ## Development
 

@@ -93,7 +93,7 @@ def require_env(settings: Settings) -> None:
         sys.exit(1)
     if settings.allowed_chat_id is None:
         print(
-            'Missing allowed chat id (--allowed-chat-id / TELEGRAM_ALLOWED_CHAT_ID / config allowed_chat_id)',
+            'Missing allowed sender id (--allowed-chat-id / TELEGRAM_ALLOWED_CHAT_ID / config allowed_chat_id)',
             file=sys.stderr,
         )
         sys.exit(1)
@@ -162,7 +162,7 @@ class Telecodex:
         default=None,
         type=int,
         show_envvar=True,
-        help='Only this Telegram chat id will receive replies.',
+        help='Only this Telegram sender user id will be accepted.',
     )
     acp_log_file: str | None = classyclick.Option(
         envvar='TELECODEX_ACP_LOG_FILE',

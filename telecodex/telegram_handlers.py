@@ -22,6 +22,13 @@ from telecodex.status_formatting import (
 PENDING_MODEL_INPUT_KEY = 'pending_model_input'
 
 
+def is_allowed_sender(update: Update, allowed_sender_id: Any) -> bool:
+    user = update.effective_user
+    if user is None:
+        return False
+    return user.id == allowed_sender_id
+
+
 def register_handlers(application: Any) -> None:
     application.add_handler(CommandHandler('start', handle_start_command))
     application.add_handler(CommandHandler('verbose', handle_verbose_command))
@@ -130,8 +137,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not text:
         return
 
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         return
 
     if context.application.bot_data.get(PENDING_MODEL_INPUT_KEY):
@@ -153,8 +160,8 @@ async def handle_start_command(update: Update, context: ContextTypes.DEFAULT_TYP
     message = update.effective_message
     if message is None:
         return
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         return
     await process_user_input(message, context, 'hello')
 
@@ -163,8 +170,8 @@ async def handle_verbose_command(update: Update, context: ContextTypes.DEFAULT_T
     message = update.effective_message
     if message is None:
         return
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         return
     verbose = bool(context.application.bot_data.get('verbose'))
     verbose = not verbose
@@ -177,8 +184,8 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     message = update.effective_message
     if message is None:
         return
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         return
 
     codex = context.application.bot_data['codex']
@@ -259,8 +266,8 @@ async def handle_model_command(update: Update, context: ContextTypes.DEFAULT_TYP
     message = update.effective_message
     if message is None:
         return
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         return
 
     codex = context.application.bot_data['codex']
@@ -297,8 +304,8 @@ async def handle_model_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.answer()
         return
 
-    allowed_chat_id = context.application.bot_data.get('allowed_chat_id')
-    if message.chat_id != allowed_chat_id:
+    allowed_sender_id = context.application.bot_data.get('allowed_chat_id')
+    if not is_allowed_sender(update, allowed_sender_id):
         await query.answer()
         return
 
